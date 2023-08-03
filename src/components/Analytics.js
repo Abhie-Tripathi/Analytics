@@ -1,11 +1,30 @@
 import React, { useEffect, useState } from "react";
 
+const Tag = ({ text, selected, onClick }) => {
+  const tagClass = selected
+    ? "border bg-blue-500 text-white rounded p-1 cursor-pointer"
+    : "border rounded p-1 cursor-pointer";
+  return (
+    <div className={tagClass} onClick={onClick}>
+      {text}
+    </div>
+  );
+};
+
 const Analytics = () => {
   const [dataList, setDataList] = useState([]);
+  const [date, setDate] = useState("2021-05-01");
+  const [showSettings, setShowSettings] = useState(false)
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [appliedTags, setAppliedTags] = useState([]);
 
   useEffect(() => {
     getData();
-  }, []);
+  }, [date]);
+
+  useEffect(() => {
+    applyChanges();
+  }, [selectedTags]);
 
   async function getData() {
     const appsresponse = await fetch(
@@ -21,7 +40,7 @@ const Analytics = () => {
     }, {});
 
     const response = await fetch(
-      "http://go-dev.greedygame.com/v3/dummy/report?startDate=2021-05-01&endDate=2021-05-03",
+      `http://go-dev.greedygame.com/v3/dummy/report?startDate=${date}&endDate=${date}`,
       {
         method: "GET",
       }
@@ -31,21 +50,54 @@ const Analytics = () => {
       return {
         Date: item.date.slice(0, 10),
         App: appList[item.app_id],
-        Requests: item.requests,
-        responses: item.responses,
-        impressions: item.impressions,
         Clicks: item.clicks,
+        "Ad Request": item.requests,
+        "Ad Response": item.responses,
+        Impression: item.impressions,
         Revenue: item.revenue,
-        FilRate: (item.requests / item.responses) * 100,
+        "Fill Rate": (item.requests / item.responses) * 100,
         CTR: (item.clicks / item.impressions) * 100,
       };
     });
     setDataList(dataListarray);
   }
 
+  const toggleTagSelection = (tag) => {
+    setSelectedTags((prevSelectedTags) =>
+      prevSelectedTags.includes(tag)
+        ? prevSelectedTags.filter((t) => t !== tag)
+        : [...prevSelectedTags, tag]
+    );
+  };
+
+  const applyChanges = () => {
+    setAppliedTags(selectedTags);
+  };
+
+  const toggleSettings = (e) =>{
+    e.preventDefault()
+    setShowSettings(!showSettings)
+  }
+
+  const allTags = [
+    "Date",
+    "App",
+    "Clicks",
+    "Ad Request",
+    "Ad Response",
+    "Impression",
+    "Revenue",
+    "Fill Rate",
+    "CTR",
+  ];
+
   let columns;
-  if (dataList.length > 1) {
+  if (dataList.length > 0) {
     columns = Object.keys(dataList[0]);
+  }
+
+  function dateSetter(e) {
+    setDate(e.target.value);
   }
 
   return (
@@ -55,53 +107,79 @@ const Analytics = () => {
         <div className="mt-10">
           <h1 className="text-2xl font-semibold ">Analytics</h1>
           <form className="flex mt-4 justify-between">
-            <input type="date" className="border rounded" />
-            <button className="border px-2">Settings</button>
+            <input
+              type="date"
+              onChange={(e) => dateSetter(e)}
+              className="border rounded"
+              min="2021-06-01"
+              max="2021-06-30"
+            />
+            <button className="border px-2" onClick={(e) => toggleSettings(e)}>
+              Settings
+            </button>
           </form>
-          <div className="mt-2 border rounded">
-            <div className="p-3">
-              <h3 className="font-semibold">Dimensions and Metrics</h3>
-              <div className="flex gap-3 mt-3">
-                <div className="border rounded p-1 w-[110px]">Date</div>
-                <div className="border rounded p-1 w-[110px]">App</div>
-                <div className="border rounded p-1 w-[110px]">Clicks</div>
-                <div className="border rounded p-1 w-[110px]">Ad Request</div>
-                <div className="border rounded p-1 w-[110px]">Ad Response</div>
-                <div className="border rounded p-1 w-[110px]">Impression</div>
-                <div className="border rounded p-1 w-[110px]">Revenue</div>
-                <div className="border rounded p-1 w-[110px]">Fill Rate</div>
-                <div className="border rounded p-1 w-[110px]">CTR</div>
-              </div>
-              <div className="flex justify-end mt-4 gap-2">
-                <button className=" text-blue-600  py-2 px-4 rounded border">
-                  Close
-                </button>
-                <button className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded mr-2">
-                  Apply Changes
-                </button>
+          {showSettings && (
+            <div className="mt-2 border rounded">
+              <div className="p-3">
+                <h3 className="font-semibold">Dimensions and Metrics</h3>
+                <div className="flex gap-3 mt-3">
+                  {allTags.map((tag) => (
+                    <Tag
+                      key={tag}
+                      text={tag}
+                      selected={selectedTags.includes(tag)}
+                      onClick={() => toggleTagSelection(tag)}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-end mt-4 gap-2">
+                  <button className="text-blue-600 py-2 px-4 rounded border">
+                    Close
+                  </button>
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded mr-2"
+                    onClick={applyChanges}
+                  >
+                    Apply Changes
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          {dataList.length > 1 ? (
+          )}
+          {dataList.length > 0 ? (
             <div className="w-full overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs">
                   <tr>
-                    {columns.map((column, index) => (
-                      <th key={index} className="px-6 py-3">
-                        {column}
-                      </th>
-                    ))}
+                    {columns.map((column, index) => {
+                      if (appliedTags.includes(column)) {
+                        return (
+                          <th key={index} className="px-6 py-3">
+                            {column}
+                          </th>
+                        );
+                      } else {
+                        return <th key={index} className="px-6 py-3"></th>;
+                      }
+                    })}
                   </tr>
                 </thead>
                 <tbody>
                   {dataList.map((row, rowIndex) => (
                     <tr key={rowIndex} className="border">
-                      {columns.map((column, columnIndex) => (
-                        <td key={columnIndex} className="px-6 py-4">
-                          {row[column]}
-                        </td>
-                      ))}
+                      {columns.map((column, columnIndex) => {
+                        if (appliedTags.includes(column)) {
+                          return (
+                            <td key={columnIndex} className="px-6 py-4">
+                              {row[column]}
+                            </td>
+                          );
+                        } else {
+                          return (
+                            <td key={columnIndex} className="px-6 py-4"></td>
+                          );
+                        }
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -114,6 +192,7 @@ const Analytics = () => {
       </div>
     </div>
   );
-};
+
+          }
 
 export default Analytics;
