@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 
-const Tag = ({ text, selected, onClick }) => {
+const Tag = ({ text, selected, disabled, onClick }) => {
   const tagClass = selected
     ? "border bg-blue-500 text-white rounded p-1 cursor-pointer"
     : "border rounded p-1 cursor-pointer";
   return (
-    <div className={tagClass} onClick={onClick}>
+    <div className={tagClass} onClick={disabled ? undefined : onClick}>
       {text}
     </div>
   );
@@ -14,17 +14,18 @@ const Tag = ({ text, selected, onClick }) => {
 const Analytics = () => {
   const [dataList, setDataList] = useState([]);
   const [date, setDate] = useState("2021-05-01");
-  const [showSettings, setShowSettings] = useState(false)
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [appliedTags, setAppliedTags] = useState([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedTags, setSelectedTags] = useState(["Date", "App"]); // Date and App are initially selected and cannot be deselected
+  const [appliedTags, setAppliedTags] = useState(["Date", "App"]); // Date and App are initially applied and disabled
+
+  const applyChanges = () => {
+    setShowSettings(false);
+    setAppliedTags(selectedTags);
+  };
 
   useEffect(() => {
     getData();
   }, [date]);
-
-  useEffect(() => {
-    applyChanges();
-  }, [selectedTags]);
 
   async function getData() {
     const appsresponse = await fetch(
@@ -63,6 +64,11 @@ const Analytics = () => {
   }
 
   const toggleTagSelection = (tag) => {
+    // Check if the tag is "Date" or "App" (disabled tags)
+    if (tag === "Date" || tag === "App") {
+      return; // Skip selecting the disabled tags
+    }
+
     setSelectedTags((prevSelectedTags) =>
       prevSelectedTags.includes(tag)
         ? prevSelectedTags.filter((t) => t !== tag)
@@ -70,14 +76,10 @@ const Analytics = () => {
     );
   };
 
-  const applyChanges = () => {
-    setAppliedTags(selectedTags);
+  const toggleSettings = (e) => {
+    e.preventDefault();
+    setShowSettings(!showSettings);
   };
-
-  const toggleSettings = (e) =>{
-    e.preventDefault()
-    setShowSettings(!showSettings)
-  }
 
   const allTags = [
     "Date",
@@ -128,6 +130,7 @@ const Analytics = () => {
                       key={tag}
                       text={tag}
                       selected={selectedTags.includes(tag)}
+                      disabled={tag === "Date" || tag === "App"} // Disable "Date" and "App" tags
                       onClick={() => toggleTagSelection(tag)}
                     />
                   ))}
@@ -142,7 +145,7 @@ const Analytics = () => {
                   >
                     Apply Changes
                   </button>
-                </div>
+                  </div>
               </div>
             </div>
           )}
@@ -192,7 +195,6 @@ const Analytics = () => {
       </div>
     </div>
   );
-
-          }
+};
 
 export default Analytics;
